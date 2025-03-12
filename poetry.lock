@@ -462,12 +462,12 @@ typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
 name = "pynput"
-version = "1.8.0"
+version = "1.7.8"
 description = "Monitor and control user input devices"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pynput-1.8.0-py2.py3-none-any.whl", hash = "sha256:dc660dc93cb03cf58141e54ed575667032841846801f3dc3c4c719d4209c7e5c"},
+    {file = "pynput-1.7.8-py2.py3-none-any.whl", hash = "sha256:a5d2e492dc3906ff85a5fe66bf05c440ce716fcc2d8bd988bc357b5d2298c577"},
 ]
 
 [package.dependencies]
@@ -656,4 +656,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "1ada89dce952a2c17bea35e93ad1e4b1e039fa947dff36036af76e9c5b383f54"
+content-hash = "86595d8b0c659fc186f8b06e5cd1c117781ca59e52333368c81683874d114f25"
