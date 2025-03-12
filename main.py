@@ -7,7 +7,8 @@ import signal
 import sys
 import psutil
 import time
-import pyperclip  # Add this import for clipboard functionality
+import pyperclip
+import notify2
 
 from openai import OpenAI
 client = OpenAI()
@@ -17,7 +18,7 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 44100
 CHUNK = 1024
-RECORD_SECONDS = 5
+RECORD_SECONDS = 10
 
 # Define the save directory
 save_dir = os.path.join(os.environ['HOME'], 'code/linux-whisperer/')
@@ -102,6 +103,13 @@ def signal_handler(sig, frame):
         recording_complete = True
         remove_pid_file()
 
+        notification = notify2.Notification(
+            "Recording Stopped",
+            "The recording has stopped",
+            "dialog-information"  # This is a standard icon name
+        )
+        notification.show()
+
     sys.exit(0)
 
 
@@ -125,6 +133,8 @@ def save_recording(frames):
 def main():
     global audio, stream, frames, recording_complete
 
+    notify2.init("Linux Whisperer")
+
     # Check if the script is already running
     if stop_existing_process():
         print("Existing recording process stopped.")
@@ -146,6 +156,13 @@ def main():
         # Record for RECORD_SECONDS or until interrupted
         print(
             f"Recording for {RECORD_SECONDS} seconds... (Press Ctrl+C or send SIGTERM to stop)")
+
+        notification = notify2.Notification(
+            "Recording Started",
+            "The recording has started",
+            "dialog-information"  # This is a standard icon name
+        )
+        notification.show()
 
         # Calculate how many chunks we need to read for RECORD_SECONDS
         chunks_to_record = int(RATE / CHUNK * RECORD_SECONDS)
@@ -182,8 +199,22 @@ def main():
             try:
                 pyperclip.copy(transcription.text)
                 print("Transcription copied to clipboard!")
+
+                notification = notify2.Notification(
+                    "Recording Transcribed",
+                    "The transcription has been copied to your clipboard",
+                    "dialog-information"  # This is a standard icon name
+                )
+                notification.show()
             except Exception as e:
                 print(f"Failed to copy to clipboard: {e}")
+
+                notification = notify2.Notification(
+                    "Error",
+                    f"Failed to copy to clipboard: {e}",
+                    "dialog-error"
+                )
+                notification.show()
 
 
 if __name__ == "__main__":
