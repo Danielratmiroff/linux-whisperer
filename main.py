@@ -15,6 +15,11 @@ from pynput import keyboard
 from openai import OpenAI
 client = OpenAI()
 
+# TODO:
+# delete the audio file after transcription
+# create desktop entry
+# auto run on startup
+
 # Audio configuration
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
@@ -107,14 +112,18 @@ def transcribe_audio(filename):
         audio_file = open(filename, "rb")
         transcription = client.audio.transcriptions.create(
             model="whisper-1",
-            file=audio_file
+            file=audio_file,
+            response_format="text",
+            language="en",
+            # Acronyms to help the model understand the context
+            # prompt="SLACK, CURSOR"
         )
 
-        print(transcription.text)
+        print(transcription)
 
         # Copy transcription to clipboard
         try:
-            pyperclip.copy(transcription.text)
+            pyperclip.copy(transcription)
             print("Transcription copied to clipboard!")
 
             notification = notify2.Notification(
@@ -133,7 +142,7 @@ def transcribe_audio(filename):
             )
             notification.show()
 
-        return transcription.text
+        return transcription
     except Exception as e:
         print(f"Transcription error: {e}")
         notification = notify2.Notification(

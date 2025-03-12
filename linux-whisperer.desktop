@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=linux-whisperer
+Exec="/home/daniel/code/linux-whisperer/main.py"
+Icon=/home/daniel/code/linux-whisperer/icon.png
+Type=Application
+Categories=Utility;linux-whisperer;
+Terminal=false
