@@ -7,6 +7,10 @@ import signal
 import sys
 import psutil
 import time
+import pyperclip  # Add this import for clipboard functionality
+
+from openai import OpenAI
+client = OpenAI()
 
 # Audio configuration
 FORMAT = pyaudio.paInt16
@@ -165,6 +169,21 @@ def main():
             audio.terminate()
             save_recording(frames)
             remove_pid_file()
+
+            audio_file = open(filename, "rb")
+            transcription = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file
+            )
+
+            print(transcription.text)
+
+            # Copy transcription to clipboard
+            try:
+                pyperclip.copy(transcription.text)
+                print("Transcription copied to clipboard!")
+            except Exception as e:
+                print(f"Failed to copy to clipboard: {e}")
 
 
 if __name__ == "__main__":
