@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
+import datetime
 import pyaudio
 import wave
-import datetime
 import os
 import signal
 import sys
-import psutil
 import time
 import pyperclip
 import notify2
@@ -14,9 +13,10 @@ from pynput import keyboard
 from openai import OpenAI
 from whisperkey.keyboard_handler import KeyboardHandler
 from whisperkey.utils import show_notification
+from whisperkey.file_handler import FileHandler
 
 
-class LinuxWhisperer:
+class WhisperKey:
     """A class that handles audio recording and transcription using OpenAI's Whisper API."""
 
     # Audio configuration
@@ -28,13 +28,7 @@ class LinuxWhisperer:
 
     def __init__(self):
         """Initialize the WhisperKey application."""
-        # Save directory setup
-        self.save_dir = os.path.join(
-            os.environ['HOME'], 'code/whisperkey/')
-        os.makedirs(self.save_dir, exist_ok=True)
-
-        # PID file for single instance management
-        self.pid_file = os.path.join(self.save_dir, 'recorder.pid')
+        self.file_handler = FileHandler()
 
         # Recording state
         self.is_recording = False
@@ -56,33 +50,14 @@ class LinuxWhisperer:
         # Termination signal
         signal.signal(signal.SIGTERM, self._signal_handler)
 
-    def _signal_handler(self, sig, frame):
+    def _signal_handler(self):
         """Handle shutdown signals by stopping recording and cleaning up."""
         if self.is_recording:
             self.stop_recording()
 
         self.recording_complete = True
-        self._remove_pid_file()
+        self.file_handler.remove_pid_file()
         sys.exit(0)
-
-    def _create_pid_file(self):
-        """Create a PID file with the current process ID."""
-        with open(self.pid_file, 'w') as f:
-            f.write(str(os.getpid()))
-
-    def _remove_pid_file(self):
-        """Remove the PID file when the process exits."""
-        if os.path.exists(self.pid_file):
-            os.remove(self.pid_file)
-
-    def is_process_running(self, pid):
-        """Check if a process with the given PID is running."""
-        try:
-            process = psutil.Process(pid)
-            return process.is_running() and (process.name() == os.path.basename(sys.argv[0])
-                                             or 'python' in process.name())
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            return False
 
     def save_recording(self):
         """Save the recorded frames to a WAV file."""
@@ -91,7 +66,7 @@ class LinuxWhisperer:
             return None
 
         # Generate a timestamped filename with full path
-        filename = os.path.join(self.save_dir,
+        filename = os.path.join(self.file_handler.get_cache_dir(),
                                 datetime.datetime.now().strftime("recording_%Y%m%d_%H%M%S.wav"))
 
         print("Saving to", filename)
@@ -133,8 +108,6 @@ class LinuxWhisperer:
                     f"Failed to copy to clipboard: {e}",
                     "dialog-error"
                 )
-
-            # TODO: Delete the audio file after transcription
 
             return transcription
 
@@ -242,8 +215,9 @@ class LinuxWhisperer:
 
     def run(self):
         """Run the WhisperKey application."""
+
         # Create PID file to indicate this process is running
-        self._create_pid_file()
+        self.file_handler.create_pid_file()
 
         # Set up keyboard listener
         self.keyboard_handler = KeyboardHandler(self.toggle_recording)
@@ -272,17 +246,17 @@ class LinuxWhisperer:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
-            self._signal_handler(signal.SIGINT, None)
+            self._signal_handler()
         finally:
             if self.is_recording:
                 self.stop_recording()
-            self._remove_pid_file()
+            self.file_handler.remove_pid_file()
 
 
 def main():
     """Main entry point for the application."""
-    whisperer = LinuxWhisperer()
-    whisperer.run()
+    whisperkey = WhisperKey()
+    whisperkey.run()
 
 
 if __name__ == "__main__":
