@@ -14,21 +14,16 @@ from openai import OpenAI
 from whisperkey.keyboard_handler import KeyboardHandler
 from whisperkey.utils import show_notification
 from whisperkey.file_handler import FileHandler
+from whisperkey.config import AUDIO_CONFIG
 
 
 class WhisperKey:
     """A class that handles audio recording and transcription using OpenAI's Whisper API."""
 
-    # Audio configuration
-    FORMAT = pyaudio.paInt16
-    CHANNELS = 1
-    RATE = 44100
-    CHUNK = 1024
-    RECORD_SECONDS = 60  # Default recording time limit
-
     def __init__(self):
         """Initialize the WhisperKey application."""
         self.file_handler = FileHandler()
+        self.audio_config = AUDIO_CONFIG
 
         # Recording state
         self.is_recording = False
@@ -50,7 +45,7 @@ class WhisperKey:
         # Termination signal
         signal.signal(signal.SIGTERM, self._signal_handler)
 
-    def _signal_handler(self):
+    def _signal_handler(self, signum, frame):
         """Handle shutdown signals by stopping recording and cleaning up."""
         if self.is_recording:
             self.stop_recording()
@@ -65,18 +60,7 @@ class WhisperKey:
             print("No audio data to save")
             return None
 
-        # Generate a timestamped filename with full path
-        filename = os.path.join(self.file_handler.get_cache_dir(),
-                                datetime.datetime.now().strftime("recording_%Y%m%d_%H%M%S.wav"))
-
-        print("Saving to", filename)
-        with wave.open(filename, 'wb') as wf:
-            wf.setnchannels(self.CHANNELS)
-            wf.setsampwidth(self.audio.get_sample_size(self.FORMAT))
-            wf.setframerate(self.RATE)
-            wf.writeframes(b''.join(self.frames))
-
-        return filename
+        return self.file_handler.save_recording(self.frames, self.audio, self.audio_config)
 
     def transcribe_audio(self, filename):
         """Transcribe the audio file using OpenAI's Whisper API."""
@@ -131,11 +115,11 @@ class WhisperKey:
 
         # Initialize PyAudio
         self.audio = pyaudio.PyAudio()
-        self.stream = self.audio.open(format=self.FORMAT,
-                                      channels=self.CHANNELS,
-                                      rate=self.RATE,
+        self.stream = self.audio.open(format=self.audio_config.FORMAT,
+                                      channels=self.audio_config.CHANNELS,
+                                      rate=self.audio_config.RATE,
                                       input=True,
-                                      frames_per_buffer=self.CHUNK)
+                                      frames_per_buffer=self.audio_config.CHUNK)
 
         self.is_recording = True
 
@@ -154,7 +138,8 @@ class WhisperKey:
     def _record_audio(self):
         """Record audio until stopped or time limit reached."""
         # Calculate how many chunks we need to read for RECORD_SECONDS
-        chunks_to_record = int(self.RATE / self.CHUNK * self.RECORD_SECONDS)
+        chunks_to_record = int(
+            self.audio_config.RATE / self.audio_config.CHUNK * self.audio_config.RECORD_SECONDS)
 
         # Record until stopped or time limit reached
         for _ in range(chunks_to_record):
@@ -162,7 +147,7 @@ class WhisperKey:
                 break
 
             try:
-                data = self.stream.read(self.CHUNK)
+                data = self.stream.read(self.audio_config.CHUNK)
                 self.frames.append(data)
             except Exception as e:
                 print(f"Error recording audio: {e}")
@@ -173,7 +158,7 @@ class WhisperKey:
             self.stop_recording()
             show_notification(
                 "Recording Stopped",
-                f"Time limit of {self.RECORD_SECONDS} seconds reached",
+                f"Time limit of {self.audio_config.RECORD_SECONDS} seconds reached",
                 "dialog-information"
             )
 
@@ -246,7 +231,7 @@ class WhisperKey:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
-            self._signal_handler()
+            self._signal_handler(signal.SIGINT, None)
         finally:
             if self.is_recording:
                 self.stop_recording()

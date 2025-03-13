@@ -2,7 +2,7 @@ import os
 import datetime
 import appdirs
 import wave
-from whisperkey.settings import APP_NAME
+from whisperkey.config import APP_NAME, AudioConfig
 
 
 class FileHandler:
@@ -31,21 +31,21 @@ class FileHandler:
         if os.path.exists(self.pid_file):
             os.remove(self.pid_file)
 
-    def save_recording(self, frames, audio, FORMAT, CHANNELS, RATE):
+    def save_recording(self, frames, audio, audio_config: AudioConfig):
         """Save the recorded frames to a WAV file."""
         if not frames:
             print("No audio data to save")
             return None
 
         # Generate a timestamped filename with full path
-        filename = os.path.join(self.file_handler.get_cache_dir(),
+        filename = os.path.join(self.get_cache_dir(),
                                 datetime.datetime.now().strftime("recording_%Y%m%d_%H%M%S.wav"))
 
         print("Saving to", filename)
         with wave.open(filename, 'wb') as wf:
-            wf.setnchannels(CHANNELS)
-            wf.setsampwidth(audio.get_sample_size(FORMAT))
-            wf.setframerate(RATE)
+            wf.setnchannels(audio_config.CHANNELS)
+            wf.setsampwidth(audio.get_sample_size(audio_config.FORMAT))
+            wf.setframerate(audio_config.RATE)
             wf.writeframes(b''.join(frames))
 
         return filename
