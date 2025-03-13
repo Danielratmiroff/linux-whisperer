@@ -32,20 +32,25 @@ class FileHandler:
             os.remove(self.pid_file)
 
     def save_recording(self, frames, audio, audio_config: AudioConfig):
-        """Save the recorded frames to a WAV file."""
-        if not frames:
-            print("No audio data to save")
+        try:
+            """Save the recorded frames to a WAV file."""
+            if not frames:
+                print("No audio data to save")
+                return None
+
+            # Generate a timestamped filename with full path
+            filename = os.path.join(self.get_cache_dir(),
+                                    datetime.datetime.now().strftime("recording_%Y%m%d_%H%M%S.wav"))
+
+            print("Saving to", filename)
+            with wave.open(filename, 'wb') as wf:
+                wf.setnchannels(audio_config.CHANNELS)
+                wf.setsampwidth(audio.get_sample_size(audio_config.FORMAT))
+                wf.setframerate(audio_config.RATE)
+                wf.writeframes(b''.join(frames))
+
+                return filename
+
+        except Exception as e:
+            print(f"Error saving recording: {e}")
             return None
-
-        # Generate a timestamped filename with full path
-        filename = os.path.join(self.get_cache_dir(),
-                                datetime.datetime.now().strftime("recording_%Y%m%d_%H%M%S.wav"))
-
-        print("Saving to", filename)
-        with wave.open(filename, 'wb') as wf:
-            wf.setnchannels(audio_config.CHANNELS)
-            wf.setsampwidth(audio.get_sample_size(audio_config.FORMAT))
-            wf.setframerate(audio_config.RATE)
-            wf.writeframes(b''.join(frames))
-
-        return filename

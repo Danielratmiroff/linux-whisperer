@@ -32,7 +32,6 @@ class WhisperKey:
         self.audio = None
         self.stream = None
         self.recording_complete = False
-        self.current_keys = set()
 
         # Initialize OpenAI client
         self.client = OpenAI()
@@ -54,15 +53,7 @@ class WhisperKey:
         self.file_handler.remove_pid_file()
         sys.exit(0)
 
-    def save_recording(self):
-        """Save the recorded frames to a WAV file."""
-        if not self.frames:
-            print("No audio data to save")
-            return None
-
-        return self.file_handler.save_recording(self.frames, self.audio, self.audio_config)
-
-    def transcribe_audio(self, filename):
+    def transcribe_audio(self, filename) -> str | None:
         """Transcribe the audio file using OpenAI's Whisper API."""
         try:
             with open(filename, "rb") as audio_file:
@@ -74,34 +65,10 @@ class WhisperKey:
                 )
 
             print(transcription)
-
-            # Copy transcription to clipboard
-            try:
-                pyperclip.copy(transcription)
-                print("Transcription copied to clipboard!")
-
-                show_notification(
-                    "Recording Completed",
-                    "The transcription has been copied to your clipboard",
-                    "dialog-information"
-                )
-            except Exception as e:
-                print(f"Failed to copy to clipboard: {e}")
-                show_notification(
-                    "Error",
-                    f"Failed to copy to clipboard: {e}",
-                    "dialog-error"
-                )
-
             return transcription
 
         except Exception as e:
             print(f"Transcription error: {e}")
-            show_notification(
-                "Transcription Error",
-                f"Failed to transcribe audio: {e}",
-                "dialog-error"
-            )
             return None
 
     def start_recording(self):
@@ -181,15 +148,37 @@ class WhisperKey:
         if self.audio:
             self.audio.terminate()
 
-        filename = self.save_recording()
+        # Save the recording
+        filename = self.file_handler.save_recording(
+            self.frames, self.audio, self.audio_config)
+        if not filename:
+            show_notification(
+                "Error",
+                "Failed to save recording",
+                "dialog-error"
+            )
+            return
 
         print("Recording stopped. Processing transcription...")
 
-        # Transcribe in a separate thread to keep the UI responsive
-        if filename:
-            threading.Thread(target=self.transcribe_audio,
-                             args=(filename,),
-                             daemon=True).start()
+        # Transcribe the recording
+        transcription = self.transcribe_audio(filename)
+        if not transcription:
+            show_notification(
+                "Error",
+                "Failed to transcribe recording",
+                "dialog-error"
+            )
+            return
+
+        pyperclip.copy(transcription)
+        print("Transcription copied to clipboard!")
+
+        show_notification(
+            "Recording Completed",
+            "The transcription has been copied to your clipboard",
+            "dialog-information"
+        )
 
     def toggle_recording(self):
         """Toggle recording state."""
